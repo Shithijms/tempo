@@ -1,0 +1,12 @@
+.split {
+  display: flex;
+}
+
+.gutter {
+  background-color: #3c3c3c;
+  cursor: col-resize;
+}
+
+.gutter.gutter-horizontal {
+  width: 6px;
+}
