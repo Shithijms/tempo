@@ -46,19 +46,21 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from app.utils.auth import create_access_token
 from starlette.middleware.sessions import SessionMiddleware
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
 app.add_middleware(SessionMiddleware, secret_key="supersecret_session_key")
 # OAuth config
-config = Config(environ={"GOOGLE_CLIENT_ID": "141858607640-fppbqc1etiolgqfl2nt8is34ksu9onrb.apps.googleusercontent.com",
-                         "GOOGLE_CLIENT_SECRET": "GOCSPX-FoptAXdc4xJVq-K9CmztnZ-NfMb"})
-oauth = OAuth(config)
+oauth = OAuth()
 oauth.register(
     name="google",
-    client_id="141858607640-fppbqc1etiolgqfl2nt8is34ksu9onrb.apps.googleusercontent.com"#config("GOOGLE_CLIENT_ID"),
-    client_secret="GOCSPX-FoptAXdc4xJVq-K9CmztnZ-NfMb"#config("GOOGLE_CLIENT_SECRET"),
-    server_metadata_url="GOCSPX-FoptAXdc4xJVq-K9CmztnZ-NfMb"#"https://accounts.google.com/.well-known/openid-configuration",
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={"scope": "openid email profile"}
 )
 
