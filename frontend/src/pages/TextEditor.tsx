@@ -35,8 +35,12 @@ const [theme,setTheme]=useState("vs-dark");
       }}
     />
     <div className="flex flex-col">
-        <h2 className="text-black font-bold">AI Suggestion</h2>
-        <div className='flex-1 bg-slate-400'>hh</div>
+        <div className="flex flex-col">
+             <h2 className="text-black font-bold text-justify">AI Suggestion</h2>
+             <button className="text-center">Turn Off AI</button>
+        </div>
+       
+        <div className='flex-1 bg-slate-400'>Use for loop</div>
     </div>
        </Split>
        <div>
