@@ -11,7 +11,7 @@ interface LandingPageProps {
 }
 
 export const LandingPage = ({ onLogin }: LandingPageProps) => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(false);
 
   const features = [
     {

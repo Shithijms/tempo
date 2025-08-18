@@ -1,0 +1,27 @@
+# backend/requirements/prod.txt
+# Production-specific dependencies
+
+-r base.txt
+
+# Production server
+gunicorn==21.2.0
+
+# Monitoring and logging
+sentry-sdk[fastapi]==1.38.0
+prometheus-client==0.19.0
+
+# Security
+cryptography==41.0.8
+
+# Performance
+cachetools==5.3.2
+redis==5.0.1
+
+# Health checks
+psutil==5.9.6
+
+redis 
+asyncio
+
+sentence_transformers
+supabase
