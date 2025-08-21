@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TextEditor from "./pages/TextEditor";
-
+import ThemeSwitcher from "./components/ThemeSwitcher";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -17,15 +17,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route
-            path="/editor"
-            element={
-              <TextEditor
-                code={"hello"}
-                onChange={() => {}}
-              />
-            }
-          />
+          <Route path="/editor" element={<TextEditor />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
