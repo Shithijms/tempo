@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, Clock, Calendar, Play, BookOpen, Star, Bot, Send, Plus, CheckCircle, AlertCircle, Lightbulb } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 
 interface Workshop {
   id: string;

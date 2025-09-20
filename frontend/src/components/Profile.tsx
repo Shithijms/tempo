@@ -22,7 +22,7 @@ import {
   Brain,
   Zap
 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/toast";
 
 export const Profile = () => {
   const { toast } = useToast();
