@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, Target, TrendingUp, Clock, Award, Brain } from "lucide-react";
+import { Plus, BookOpen, Target, TrendingUp, Clock, Award, Brain, Lightbulb, Map } from "lucide-react";
 import { CreateGoalDialog } from "./CreateGoalDialog";
 import { PDFUploadCard } from "./PDFUploadCard";
 import { QuizGenerationDialog } from "./QuizGenerationDialog";
@@ -14,6 +14,8 @@ export const Dashboard = () => {
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showQuizGenerationDialog, setShowQuizGenerationDialog] = useState(false);
   const [showQuizView, setShowQuizView] = useState(false);
+  const [gapAnalysis, setGapAnalysis] = useState(null);
+  const [recommendations, setRecommendations] = useState(null);
 
   const handleUploadComplete = () => {
     setShowQuizGenerationDialog(true);
@@ -22,6 +24,31 @@ export const Dashboard = () => {
   const handleGenerateQuiz = () => {
     setShowQuizGenerationDialog(false);
     setShowQuizView(true);
+  };
+
+  const handleRunAnalysis = async () => {
+    const userId = 1; // Assuming user ID 1 for now
+    try {
+      // Fetch Gap Analysis
+      const gapAnalysisResponse = await fetch(`/api/gap-analysis?user_id=${userId}`);
+      if (!gapAnalysisResponse.ok) {
+        throw new Error(`Error fetching gap analysis: ${gapAnalysisResponse.statusText}`);
+      }
+      const gapAnalysisData = await gapAnalysisResponse.json();
+      setGapAnalysis(gapAnalysisData);
+
+      // Fetch Personalized Learning Path
+      const recommendationsResponse = await fetch(`/api/mdp-recommendations?user_id=${userId}`);
+      if (!recommendationsResponse.ok) {
+        throw new Error(`Error fetching recommendations: ${recommendationsResponse.statusText}`);
+      }
+      const recommendationsData = await recommendationsResponse.json();
+      setRecommendations(recommendationsData);
+
+    } catch (error) {
+      console.error("Failed to fetch analysis data:", error);
+      // Optionally, show an error message to the user
+    }
   };
 
   const recentCourses = [
@@ -132,6 +159,82 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      
+      <div className="flex justify-end">
+        <Button onClick={handleRunAnalysis} className="gap-2">
+          <Brain className="w-4 h-4" />
+          Analyze My Progress
+        </Button>
+      </div>
+
+      {(gapAnalysis || recommendations) && (
+        <div className="grid lg:grid-cols-2 gap-6 mt-6">
+          {/* Gap Analysis Card */}
+          {gapAnalysis && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-primary" />
+                  Gap Analysis
+                </CardTitle>
+                <CardDescription>
+                  Identifying your knowledge gaps and misconceptions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="font-bold">Overall Accuracy: {gapAnalysis.overall_accuracy}%</p>
+                <div className="mt-4">
+                  <h4 className="font-semibold">Weak Topics:</h4>
+                  <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+                    {gapAnalysis.weak_topics.map(topic => (
+                      <li key={topic.topic}>
+                        <strong>{topic.topic}:</strong> {topic.accuracy_rate}% accuracy.
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-4">
+                  <h4 className="font-semibold">Detected Misconceptions:</h4>
+                  <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+                    {gapAnalysis.misconceptions.map(mc => (
+                      <li key={mc.topic}>
+                        <strong>{mc.topic}:</strong> {mc.pattern} {mc.recommendation}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Personalized Learning Path Card */}
+          {recommendations && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Map className="w-5 h-5 text-primary" />
+                  Your Personalized Learning Path
+                </CardTitle>
+                <CardDescription>
+                  Next steps to improve your score, powered by AI.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="font-bold">Expected Improvement: +{recommendations.expected_improvement_percent}%</p>
+                <div className="mt-4 space-y-2">
+                  {recommendations.policy.map((step, index) => (
+                    <div key={index} className="p-3 border rounded-lg">
+                      <p className="font-semibold">{index + 1}. {step.category_name} ({step.difficulty})</p>
+                      <p className="text-sm text-muted-foreground">{step.rationale}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Active Courses */}
