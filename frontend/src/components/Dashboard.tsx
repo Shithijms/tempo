@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,9 +6,23 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Plus, BookOpen, Target, TrendingUp, Clock, Award, Brain } from "lucide-react";
 import { CreateGoalDialog } from "./CreateGoalDialog";
+import { PDFUploadCard } from "./PDFUploadCard";
+import { QuizGenerationDialog } from "./QuizGenerationDialog";
+import { QuizView } from "./QuizView";
 
 export const Dashboard = () => {
   const [showCreateGoal, setShowCreateGoal] = useState(false);
+  const [showQuizGenerationDialog, setShowQuizGenerationDialog] = useState(false);
+  const [showQuizView, setShowQuizView] = useState(false);
+
+  const handleUploadComplete = () => {
+    setShowQuizGenerationDialog(true);
+  };
+
+  const handleGenerateQuiz = () => {
+    setShowQuizGenerationDialog(false);
+    setShowQuizView(true);
+  };
 
   const recentCourses = [
     {
@@ -48,6 +63,10 @@ export const Dashboard = () => {
     { task: "Practice Chemical Equations", subject: "Chemistry", urgent: false },
     { task: "AI Generated Quiz - Algebra", subject: "Mathematics", urgent: true }
   ];
+
+  if (showQuizView) {
+    return <QuizView />;
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -162,9 +181,11 @@ export const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Today's Tasks */}
+        {/* Today's Tasks and PDF Upload */}
         <div>
-          <Card>
+          <PDFUploadCard onUploadComplete={handleUploadComplete} />
+
+          <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Award className="w-5 h-5" />
@@ -195,27 +216,6 @@ export const Dashboard = () => {
               ))}
             </CardContent>
           </Card>
-
-          {/* Quick Actions */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <Brain className="w-4 h-4 mr-2" />
-                Ask AI Tutor
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <BookOpen className="w-4 h-4 mr-2" />
-                Take Practice Test
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <TrendingUp className="w-4 h-4 mr-2" />
-                View Progress
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
@@ -223,9 +223,12 @@ export const Dashboard = () => {
         open={showCreateGoal} 
         onOpenChange={setShowCreateGoal}
       />
+
+      <QuizGenerationDialog
+        open={showQuizGenerationDialog}
+        onOpenChange={setShowQuizGenerationDialog}
+        onGenerateQuiz={handleGenerateQuiz}
+      />
     </div>
   );
 };
-
-                  
-

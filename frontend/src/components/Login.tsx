@@ -1,8 +1,15 @@
+
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import { useAuth } from "../store/AuthContext.tsx";
 
 interface GoogleUser {
+  name: string;
+  email: string;
+  picture: string;
+}
+
+interface DecodedToken {
   name: string;
   email: string;
   picture: string;
@@ -23,7 +30,7 @@ const Login = () => {
           <GoogleLogin
             onSuccess={(response) => {
               if (response.credential) {
-                const decoded: any = jwtDecode(response.credential);
+                const decoded: DecodedToken = jwtDecode(response.credential);
                 const user: GoogleUser = {
                   name: decoded.name,
                   email: decoded.email,
