@@ -21,16 +21,18 @@ export const LandingPage = ({ onLogin }: LandingPageProps) => {
     { icon: TrendingUp, title: "Progress Analytics", description: "Visualize your learning journey with comprehensive progress tracking" }
   ];
 
-  return (
+ return (
     <div className="min-h-screen bg-base-100 text-base-content">
+
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between bg-base-200 shadow-md">
         <div className="flex items-center gap-3">
           <img src={studysparkLogo} alt="StudySpark AI" className="w-10 h-10" />
           <h1 className="text-2xl font-bold">StudySpark AI</h1>
         </div>
-        
-     <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2">
+    
   <Button
     variant="outline"
     className="bg-base-300 border-base-content text-base-content hover:bg-base-200"
@@ -46,60 +48,8 @@ export const LandingPage = ({ onLogin }: LandingPageProps) => {
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-12">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Hero Section */}
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <h2 className="text-5xl font-bold leading-tight">
-                Your AI Study
-                <span className="block bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  Companion
-                </span>
-              </h2>
-              <p className="text-lg text-base-content/80 leading-relaxed">
-                Transform your learning experience with personalized AI tutoring, smart goal tracking,
-                and intelligent progress analytics. Start your journey to academic excellence today.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-4">
-              <Button variant="hero" size="lg" className="gap-2">
-                <Sparkles className="w-5 h-5" />
-                Start Learning Free
-              </Button>
-              <Button variant="outline" size="lg" className="bg-base-300 border-base-content text-base-content hover:bg-base-200">
-                Watch Demo
-              </Button>
-            </div>
-
-            {/* Stats */}
-            <div className="flex gap-8 pt-8">
-              <div className="text-center">
-                <div className="text-3xl font-bold">10K+</div>
-                <div className="text-base-content/70">Active Learners</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold">95%</div>
-                <div className="text-base-content/70">Success Rate</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold">24/7</div>
-                <div className="text-base-content/70">AI Support</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Auth Card */}
-          <Card className="w-full max-w-md mx-auto bg-base-200 border border-base-300 shadow-lg">
-            <CardHeader className="text-center space-y-2">
-              <CardTitle className="text-2xl">
-                {isLogin ? "Welcome Back!" : "Join StudySpark AI"}
-              </CardTitle>
-              <CardDescription>
-                {isLogin ? "Sign in to continue your learning journey" : "Start your personalized learning experience"}
-              </CardDescription>
-            </CardHeader>
+      {/* Keep the main content section commented out */}
+      {/*
             <CardContent className="space-y-4">
               {!isLogin && (
                 <div className="space-y-2">
@@ -126,8 +76,7 @@ export const LandingPage = ({ onLogin }: LandingPageProps) => {
               </div>
             </CardContent>
           </Card>
-        </div>
-
+      */}
         {/* Features Section */}
         <div className="mt-20 text-center">
           <h3 className="text-3xl font-bold mb-4">Why Choose StudySpark AI?</h3>
@@ -151,8 +100,7 @@ export const LandingPage = ({ onLogin }: LandingPageProps) => {
               );
             })}
           </div>
-        </div>
-      </div>
+        </div> {/* Close Features Section div */}
     </div>
   );
 };

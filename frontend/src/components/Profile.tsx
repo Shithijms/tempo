@@ -22,10 +22,9 @@ import {
   Brain,
   Zap
 } from "lucide-react";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "@/hooks/use-toast";
 
 export const Profile = () => {
-  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     name: "Alex Johnson",
@@ -57,8 +56,7 @@ export const Profile = () => {
   const handleSave = () => {
     setProfileData(editData);
     setIsEditing(false);
-    toast({
-      title: "Profile Updated",
+    toast("Profile Updated", {
       description: "Your profile has been successfully updated.",
     });
   };
@@ -103,7 +101,9 @@ export const Profile = () => {
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-gradient-card">
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
+              <CardTitle>
+                Personal Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-6">

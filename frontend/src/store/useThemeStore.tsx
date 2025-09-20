@@ -12,8 +12,3 @@ export const useThemeStore = create<ThemeState>((set) => ({
     set({ theme });
   },
 }));
-
-// Apply theme on load
-const saved = localStorage.getItem("theme") || "light";
-document.documentElement.setAttribute("data-theme", saved);
-useThemeStore.setState({ theme: saved });

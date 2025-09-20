@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, Clock, Calendar, Play, BookOpen, Star, Bot, Send, Plus, CheckCircle, AlertCircle, Lightbulb } from "lucide-react";
 
+import { toast } from "@/hooks/use-toast";
 interface Workshop {
   id: string;
   title: string;
@@ -45,7 +46,6 @@ interface AIMessage {
 }
 
 export const Workshops = () => {
-  const { toast } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
@@ -219,10 +219,7 @@ export const Workshops = () => {
     setNewTaskDescription("");
     setActiveTask(newTask);
     
-    toast({
-      title: "Task Created",
-      description: "Your new learning task has been added and AI suggestions are ready!",
-    });
+    toast("Task Created", { description: "Your new learning task has been added and AI suggestions are ready!" });
   };
 
   const updateTaskStatus = (taskId: string, newStatus: Task['status']) => {
@@ -231,10 +228,7 @@ export const Workshops = () => {
     ));
     
     if (newStatus === 'completed') {
-      toast({
-        title: "Task Completed!",
-        description: "Great job! Your progress has been tracked.",
-      });
+      toast("Task Completed!", { description: "Great job! Your progress has been tracked." });
     }
   };
 
