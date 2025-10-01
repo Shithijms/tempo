@@ -1,38 +1,50 @@
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TextEditor from "./pages/TextEditor";
-import ThemeSwitcher from "./components/ThemeSwitcher";
-const queryClient = new QueryClient();
-import { useThemeStore } from "@/store/useThemeStore";
+import { useThemeStore } from "./store/useThemeStore";
 
-const App = () => (
+
+const queryClient = new QueryClient();
+
+const AppContent = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/editor" element={<TextEditor />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+      <Toaster/>
+    <Sonner />
+  <BrowserRouter>
+    <Routes>
+    <Route path="/" element={<Index />} />
+    <Route path="/editor" element={<TextEditor />} />
+    <Route path="*" element={<NotFound />} />    </Routes>
+  </BrowserRouter>
+  </TooltipProvider>
   </QueryClientProvider>
 );
 
-const AppWrapper = () => {
+
+const App = () => {
   useEffect(() => {
+    // Apply saved theme only once on mount
     const saved = localStorage.getItem("theme") || "light";
-    document.documentElement.setAttribute("data-theme", saved);
-    useThemeStore.setState({ theme: saved });
+
+    // Only update DOM if needed
+    if (document.documentElement.getAttribute("data-theme") !== saved) {
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+
+    // Update Zustand store without causing re-render loop
+    if (useThemeStore.getState().theme !== saved) {
+      useThemeStore.setState({ theme: saved });
+    }
   }, []);
-  return <App />;
+
+  return <AppContent />;
 };
 
-export default AppWrapper;
+export default App;

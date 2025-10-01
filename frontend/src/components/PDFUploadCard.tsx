@@ -29,10 +29,33 @@ export const PDFUploadCard = ({ onUploadComplete }: PDFUploadCardProps) => {
     if (!uploadedFile) return;
 
     setIsUploading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsUploading(false);
-    onUploadComplete();
+    try{
+      const formData = new FormData();
+      formData.append("file", uploadedFile);
+
+      const response = await fetch("http://127.0.0.1:8000/api/pdf/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const text = await response.text();
+      console.log("Raw response:",text);
+
+      if(!response.ok){
+        throw new Error("Upload failed");
+      }
+      const result = JSON.parse(text);
+      console.log("Upload success:",result);
+      onUploadComplete();
+    }
+    catch(error){
+      console.error("Error uploading file:",error);
+    }finally{
+      setIsUploading(false);
+    }
+    
   };
 
   return (
