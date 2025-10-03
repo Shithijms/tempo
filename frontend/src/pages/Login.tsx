@@ -6,25 +6,35 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.msg || "Login failed");
-        return;
+      const base = (import.meta as any).env?.VITE_AUTH_API || "";
+      if (base) {
+        const res = await fetch(`${base}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.msg || data.detail || "Login failed");
+          return;
+        }
+        // Expecting { user, token }
+        login(data.user || { name: data.user?.name || email.split("@")[0], email }, data.token);
+      } else {
+        // Fallback: client-only session
+        login({ name: email.split("@")[0], email });
       }
-
-      login(data.user, data.token);
     } catch (err) {
       setError("Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,7 +57,9 @@ const Login = () => {
           className="border p-2 rounded"
         />
         {error && <p className="text-red-500">{error}</p>}
-        <button className="bg-green-600 text-white py-2 rounded">Login</button>
+        <button disabled={loading} className="bg-green-600 text-white py-2 rounded">
+          {loading ? "Signing in..." : "Login"}
+        </button>
       </form>
     </div>
   );

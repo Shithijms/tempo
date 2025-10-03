@@ -58,8 +58,8 @@ export const QuizGenerationDialog = ({ open, onOpenChange, onGenerate,documentId
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="mcq">MCQ</SelectItem>
-                <SelectItem value="fill-in-the-blank">Fill in the Blank</SelectItem>
-                <SelectItem value="true-false">True/False</SelectItem>
+                <SelectItem value="fill_blank">Fill in the Blank</SelectItem>
+                <SelectItem value="true_false">True/False</SelectItem>
               </SelectContent>
             </Select>
           </div>

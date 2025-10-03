@@ -1,7 +1,8 @@
 // QuizView.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/store/AuthContext";
 
 interface QuizViewProps {
   quizId: number; // ✅ quizId, not documentId
@@ -11,7 +12,7 @@ interface QuizViewProps {
 interface Question {
   id: number;
   question: string;
-  type: string;
+  type: string; // "mcq" | "fill_blank" | "true_false"
   options?: string[];
   correct_answer: string;
   explanation: string;
@@ -22,13 +23,28 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const [showResult, setShowResult] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const { user } = useAuth();
+  const quizStartTime = useMemo(() => Date.now(), [quizId]);
 
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const qRes = await fetch(`http://127.0.0.1:8000/api/quiz/quiz/${quizId}/questions`);
-        const qData = await qRes.json();
-        setQuestions(qData);
+        // Fetch full quiz to include correct answers and explanations
+        const res = await fetch(`http://127.0.0.1:8000/api/quiz/quiz/${quizId}`);
+        const data = await res.json();
+        const normalized = Array.isArray(data?.questions)
+          ? data.questions.map((q: any) => ({
+              id: q.id,
+              question: q.question_text ?? q.question ?? "",
+              type: q.question_type ?? q.type ?? "mcq",
+              options: q.options ?? [],
+              correct_answer: q.correct_answer ?? "",
+              explanation: q.explanation ?? "",
+            }))
+          : [];
+        setQuestions(normalized);
       } catch (err) {
         console.error("Error fetching questions:", err);
       }
@@ -41,6 +57,51 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
 
   const handleAnswer = (answer: string) => {
     setAnswers({ ...answers, [questions[currentIndex].id]: answer });
+  };
+
+  const normalize = (value: string | undefined | null) => {
+    if (value == null) return "";
+    return String(value).trim().toLowerCase();
+  };
+
+  const isAnswerCorrect = (q: Question, userAnswer: string | undefined) => {
+    const normalizedUser = normalize(userAnswer);
+    const normalizedCorrect = normalize(q.correct_answer);
+
+    // Handle true/false synonyms
+    if (q.type === "true_false") {
+      const tfMap: Record<string, string> = {
+        true: "true",
+        t: "true",
+        yes: "true",
+        false: "false",
+        f: "false",
+        no: "false",
+      };
+      const nu = tfMap[normalizedUser] ?? normalizedUser;
+      const nc = tfMap[normalizedCorrect] ?? normalizedCorrect;
+      return nu === nc;
+    }
+
+    // For MCQ: compare user selection to the correct answer only
+    if (q.type === "mcq" && Array.isArray(q.options)) {
+      const stripLabel = (text: string) => text.replace(/^([A-Z])\)\s*/i, "");
+      const normalizedUserText = normalize(stripLabel(userAnswer ?? ""));
+      const normalizedCorrectText = normalize(stripLabel(q.correct_answer ?? ""));
+
+      if (normalizedUserText && normalizedCorrectText && normalizedUserText === normalizedCorrectText) {
+        return true;
+      }
+
+      // Also support letter-only answers like "A", "B"
+      const letters = ["a", "b", "c", "d", "e", "f", "g"];
+      const userIndex = letters.indexOf(normalize(userAnswer ?? ""));
+      const correctIndex = letters.indexOf(normalize(q.correct_answer ?? ""));
+      return userIndex !== -1 && userIndex === correctIndex;
+    }
+
+    // Fill in the blank: simple normalized comparison
+    return normalizedUser === normalizedCorrect;
   };
 
   const nextQuestion = () => {
@@ -57,7 +118,36 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
   if (!currentQ) return <p>Loading question...</p>;
 
   if (showResult) {
-    const score = questions.filter((q) => answers[q.id] === q.correct_answer).length;
+    const score = questions.filter((q) => isAnswerCorrect(q, answers[q.id])).length;
+
+    const handleSubmitResults = async () => {
+      if (submitted || submitting) return;
+      try {
+        setSubmitting(true);
+        const timeSpentMins = Math.max(1, Math.round((Date.now() - quizStartTime) / 60000));
+        const payload = {
+          user_id: (user as any)?.id ?? 1,
+          answers: questions.map((q) => ({
+            question_id: q.id,
+            user_answer: answers[q.id] ?? "",
+          })),
+          time_spent_minutes: timeSpentMins,
+        };
+        const base = (import.meta as any).env?.VITE_LEARNTRACK_API || "http://127.0.0.1:8000";
+        const res = await fetch(`${base}/quizzes/${quizId}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        // Best-effort; ignore failures for UX continuity
+        await res.json().catch(() => undefined);
+        setSubmitted(true);
+      } catch (e) {
+        console.error("Failed to submit quiz results", e);
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
     return (
       <Card>
@@ -71,7 +161,7 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
               <p className="font-semibold">{q.question}</p>
               <p>
                 Your Answer: {answers[q.id] || "Not answered"}{" "}
-                {answers[q.id] === q.correct_answer ? "✅" : "❌"}
+                {isAnswerCorrect(q, answers[q.id]) ? "✅" : "❌"}
               </p>
               <p>Correct Answer: {q.correct_answer}</p>
               <p className="text-sm text-muted-foreground">
@@ -79,7 +169,12 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
               </p>
             </div>
           ))}
-          {onBack && <Button onClick={onBack}>⬅ Back</Button>}
+          <div className="flex gap-2">
+            <Button disabled={submitted || submitting} onClick={handleSubmitResults}>
+              {submitted ? "Saved" : submitting ? "Saving..." : "Save Results"}
+            </Button>
+            {onBack && <Button variant="outline" onClick={onBack}>⬅ Back</Button>}
+          </div>
         </CardContent>
       </Card>
     );
@@ -111,7 +206,7 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
           </div>
         )}
 
-        {currentQ.type === "fill-in-the-blank" && (
+        {currentQ.type === "fill_blank" && (
           <input
             type="text"
             className="border p-2 w-full"
@@ -120,18 +215,18 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
           />
         )}
 
-        {currentQ.type === "true-false" && (
+        {currentQ.type === "true_false" && (
           <div className="space-y-2">
             <Button
-              variant={answers[currentQ.id] === "True" ? "default" : "outline"}
-              onClick={() => handleAnswer("True")}
+              variant={normalize(answers[currentQ.id]) === "true" ? "default" : "outline"}
+              onClick={() => handleAnswer("true")}
               className="w-full"
             >
               True
             </Button>
             <Button
-              variant={answers[currentQ.id] === "False" ? "default" : "outline"}
-              onClick={() => handleAnswer("False")}
+              variant={normalize(answers[currentQ.id]) === "false" ? "default" : "outline"}
+              onClick={() => handleAnswer("false")}
               className="w-full"
             >
               False

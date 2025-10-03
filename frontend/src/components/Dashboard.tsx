@@ -399,9 +399,14 @@ if (view === "quiz" && currentQuizId) {
     })
       .then((data) => {
         console.log("Quiz generated:", data);
-        setCurrentQuizId(data.id);
-        setShowQuizGenerationDialog(false);
-        setView("quiz");
+        const generatedQuizId = data?.quiz?.id ?? data?.id;
+        if (generatedQuizId) {
+          setCurrentQuizId(generatedQuizId);
+          setShowQuizGenerationDialog(false);
+          setView("quiz");
+        } else {
+          throw new Error("Quiz generation response missing quiz id");
+        }
       })
       .catch((err) => console.error("Quiz generation failed:", err));
   }}
