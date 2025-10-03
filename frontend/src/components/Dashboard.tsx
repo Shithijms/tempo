@@ -17,7 +17,6 @@ import { ChatView } from "./ChatView";
 export const Dashboard = () => {
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showQuizGenerationDialog, setShowQuizGenerationDialog] = useState(false);
-  const [showQuizView, setShowQuizView] = useState(false);
   const [gapAnalysis, setGapAnalysis] = useState(null);
   const [recommendations, setRecommendations] = useState(null);
   const [currentQuizId, setCurrentQuizId] = useState<number | null>(null);
@@ -40,7 +39,7 @@ export const Dashboard = () => {
     if (view === "chat") {
     return (<ChatView
        documentId={latestDoc?.id}
-    onBack={() => setView("dashboard")}/>); 
+    onBack={() => setView("dashboard")}/>);
   }
 if (view === "quiz" && currentQuizId) {
   return (
@@ -51,25 +50,11 @@ if (view === "quiz" && currentQuizId) {
   );
 }
 
-if (showQuizView && currentQuizId) {
-  return (
-    <QuizView
-      quizId={currentQuizId}
-      onBack={() => setView("dashboard")}
-    />
-  );
-}
-
-
 
   const handleUploadComplete = () => {
     setShowQuizGenerationDialog(true);
   };
 
-  const handleGenerateQuiz = () => {
-    setShowQuizGenerationDialog(false);
-    setShowQuizView(true);
-  };
 
   const handleRunAnalysis = async () => {
     const userId = 1; // Assuming user ID 1 for now
@@ -136,7 +121,7 @@ if (showQuizView && currentQuizId) {
     { task: "AI Generated Quiz - Algebra", subject: "Mathematics", urgent: true }
   ];
 
- 
+
   return (
     <div className="p-6 space-y-6">
       {/* Welcome Header */}
@@ -201,7 +186,7 @@ if (showQuizView && currentQuizId) {
           </CardContent>
         </Card>
       </div>
-      
+
       <div className="flex justify-end">
         <Button onClick={handleRunAnalysis} className="gap-2">
           <Brain className="w-4 h-4" />
@@ -312,12 +297,12 @@ if (showQuizView && currentQuizId) {
                     </div>
                     <Progress value={course.progress} className="h-2" />
                   </div>
-                  
+
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>{course.completedLessons}/{course.totalLessons} lessons</span>
                     <span>Due: {course.dueDate}</span>
                   </div>
-                  
+
                   <Button variant="outline" size="sm" className="w-full">
                     Continue Learning
                   </Button>
@@ -381,8 +366,8 @@ if (showQuizView && currentQuizId) {
   {/* Recent uploads list */}
   <RecentUploads onSelect={(id) => setLatestDoc({ id })} />
 </div>
-      <CreateGoalDialog 
-        open={showCreateGoal} 
+      <CreateGoalDialog
+        open={showCreateGoal}
         onOpenChange={setShowCreateGoal}
       />
 
@@ -390,6 +375,7 @@ if (showQuizView && currentQuizId) {
 
   open={showQuizGenerationDialog}
   onOpenChange={setShowQuizGenerationDialog}
+  documentId={latestDoc?.id}
   onGenerate={(options) => {
     // call backend to generate quiz
     fetch("http://127.0.0.1:8000/api/quiz/generate", {
@@ -397,17 +383,24 @@ if (showQuizView && currentQuizId) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         document_id: latestDoc?.id,
-        num_questions: options. num_questions,
-        question_types: [options.question_types],
+        num_questions: options.num_questions,
+        question_types: options.question_types,
         difficulty: options.difficulty,
         focus_topics: ["general"], // For simplicity
       }),
     })
-      .then((res) => res.json())
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(errorBody => {
+                throw new Error(`Quiz generation failed with status ${res.status}: ${JSON.stringify(errorBody)}`);
+            });
+        }
+        return res.json();
+    })
       .then((data) => {
         console.log("Quiz generated:", data);
         setCurrentQuizId(data.id);
-        setShowQuizGenerationDialog(false); 
+        setShowQuizGenerationDialog(false);
         setView("quiz");
       })
       .catch((err) => console.error("Quiz generation failed:", err));
