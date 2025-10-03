@@ -9,20 +9,29 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 interface QuizGenerationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  documentId: number;
   onGenerate: (options: {
-    numQuestions: number;
-    questionType: string;
+    document_id: number;
+    num_questions: number;
+    question_types: string[];
     difficulty: string;
   }) => void;
 }
 
-export const QuizGenerationDialog = ({ open, onOpenChange, onGenerate }: QuizGenerationDialogProps) => {
+export const QuizGenerationDialog = ({ open, onOpenChange, onGenerate,documentId }: QuizGenerationDialogProps) => {
   const [numQuestions, setNumQuestions] = useState(5);
   const [questionType, setQuestionType] = useState("mcq");
   const [difficulty, setDifficulty] = useState("medium");
 
   const handleSubmit = () => {
-    onGenerate({ numQuestions, questionType, difficulty });
+    // FIX: Map local state to the snake_case payload expected by the API endpoint, 
+    // wrapping the single questionType into a question_types array.
+    onGenerate({
+      document_id: documentId,
+      num_questions: numQuestions,
+      question_types: [questionType],
+      difficulty
+    });
     onOpenChange(false);
   };
 

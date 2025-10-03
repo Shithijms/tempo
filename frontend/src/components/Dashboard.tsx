@@ -397,8 +397,8 @@ if (showQuizView && currentQuizId) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         document_id: latestDoc?.id,
-        num_questions: options.numQuestions,
-        question_types: [options.questionType],
+        num_questions: options. num_questions,
+        question_types: [options.question_types],
         difficulty: options.difficulty,
         focus_topics: ["general"], // For simplicity
       }),
