@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +9,10 @@ import { CreateGoalDialog } from "./CreateGoalDialog";
 import { PDFUploadCard } from "./PDFUploadCard";
 import { QuizGenerationDialog } from "./QuizGenerationDialog";
 import { QuizView } from "./QuizView";
+import { ActionButtons } from "./ActionButtons";
+import { PDFContent } from "./PDFContent";
+import { RecentUploads } from "./RecentUploads";
+import { ChatView } from "./ChatView";
 
 export const Dashboard = () => {
   const [showCreateGoal, setShowCreateGoal] = useState(false);
@@ -16,6 +20,47 @@ export const Dashboard = () => {
   const [showQuizView, setShowQuizView] = useState(false);
   const [gapAnalysis, setGapAnalysis] = useState(null);
   const [recommendations, setRecommendations] = useState(null);
+  const [currentQuizId, setCurrentQuizId] = useState<number | null>(null);
+
+  const [latestDoc, setLatestDoc] = useState<any>(null);
+  const [view, setView] = useState<"dashboard" | "chat" | "quiz">("dashboard");
+
+  const fetchLatestDocument = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/pdf/documents?limit=1");
+      if (!res.ok) throw new Error("Failed to fetch documents");
+      const docs = await res.json();
+      if (docs.length > 0) {
+        setLatestDoc(docs[0]);
+      }
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+    }
+  };
+    if (view === "chat") {
+    return (<ChatView
+       documentId={latestDoc?.id}
+    onBack={() => setView("dashboard")}/>); 
+  }
+if (view === "quiz" && currentQuizId) {
+  return (
+    <QuizView
+      quizId={currentQuizId}
+      onBack={() => setView("dashboard")}
+    />
+  );
+}
+
+if (showQuizView && currentQuizId) {
+  return (
+    <QuizView
+      quizId={currentQuizId}
+      onBack={() => setView("dashboard")}
+    />
+  );
+}
+
+
 
   const handleUploadComplete = () => {
     setShowQuizGenerationDialog(true);
@@ -91,10 +136,7 @@ export const Dashboard = () => {
     { task: "AI Generated Quiz - Algebra", subject: "Mathematics", urgent: true }
   ];
 
-  if (showQuizView) {
-    return <QuizView />;
-  }
-
+ 
   return (
     <div className="p-6 space-y-6">
       {/* Welcome Header */}
@@ -206,6 +248,7 @@ export const Dashboard = () => {
               </CardContent>
             </Card>
           )}
+
 
           {/* Personalized Learning Path Card */}
           {recommendations && (
@@ -321,17 +364,56 @@ export const Dashboard = () => {
           </Card>
         </div>
       </div>
+<div className="p-6 space-y-6">
 
+
+  {/* Show latest document if any */}
+  {latestDoc && (
+    <div className="space-y-6">
+      <PDFContent documentId={latestDoc.id} />
+      <ActionButtons
+        onChat={() => setView("chat")}
+        onQuiz={() => setShowQuizGenerationDialog(true)}
+      />
+    </div>
+  )}
+
+  {/* Recent uploads list */}
+  <RecentUploads onSelect={(id) => setLatestDoc({ id })} />
+</div>
       <CreateGoalDialog 
         open={showCreateGoal} 
         onOpenChange={setShowCreateGoal}
       />
 
-      <QuizGenerationDialog
-        open={showQuizGenerationDialog}
-        onOpenChange={setShowQuizGenerationDialog}
-        onGenerateQuiz={handleGenerateQuiz}
-      />
+<QuizGenerationDialog
+
+  open={showQuizGenerationDialog}
+  onOpenChange={setShowQuizGenerationDialog}
+  onGenerate={(options) => {
+    // call backend to generate quiz
+    fetch("http://127.0.0.1:8000/api/quiz/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        document_id: latestDoc?.id,
+        num_questions: options.numQuestions,
+        question_types: [options.questionType],
+        difficulty: options.difficulty,
+        focus_topics: ["general"], // For simplicity
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Quiz generated:", data);
+        setCurrentQuizId(data.id);
+        setShowQuizGenerationDialog(false); 
+        setView("quiz");
+      })
+      .catch((err) => console.error("Quiz generation failed:", err));
+  }}
+/>
+
     </div>
   );
 };
