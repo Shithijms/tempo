@@ -5,58 +5,59 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/store/AuthContext";
 
 interface QuizViewProps {
-  quizId: number; // ✅ quizId, not documentId
+  quizId: number;
   onBack?: () => void;
 }
 
 interface Question {
   id: number;
   question: string;
-  type: string; // "mcq" | "fill_blank" | "true_false"
+  type: string;
   options?: string[];
+}
+
+interface QuizData {
+  id: number;
+  title: string;
+  questions: Question[];
+}
+
+// Corrected Result interface
+interface Result {
+  question_id: number;
+  question_text: string;
+  user_answer: string;
+  is_correct: boolean;
   correct_answer: string;
-  explanation: string;
+  explanation?: string;
 }
 
 export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const [showResult, setShowResult] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const { user } = useAuth();
-  const quizStartTime = useMemo(() => Date.now(), [quizId]);
 
   useEffect(() => {
-    const fetchQuestions = async () => {
+    const fetchQuiz = async () => {
       try {
-        // Fetch full quiz to include correct answers and explanations
-        const res = await fetch(`http://127.0.0.1:8000/api/quiz/quiz/${quizId}`);
-        const data = await res.json();
-        const normalized = Array.isArray(data?.questions)
-          ? data.questions.map((q: any) => ({
-              id: q.id,
-              question: q.question_text ?? q.question ?? "",
-              type: q.question_type ?? q.type ?? "mcq",
-              options: q.options ?? [],
-              correct_answer: q.correct_answer ?? "",
-              explanation: q.explanation ?? "",
-            }))
-          : [];
-        setQuestions(normalized);
+        const qRes = await fetch(`http://127.0.0.1:8000/api/quiz/quiz/${quizId}/questions`);
+        const qData = await qRes.json();
+        setQuestions(qData);
       } catch (err) {
-        console.error("Error fetching questions:", err);
+        console.error("Error fetching quiz:", err);
       }
     };
 
     if (quizId) {
-      fetchQuestions();
+      fetchQuiz();
     }
   }, [quizId]);
 
   const handleAnswer = (answer: string) => {
-    setAnswers({ ...answers, [questions[currentIndex].id]: answer });
+    if (quizData) {
+      setAnswers({ ...answers, [quizData.questions[currentIndex].id]: answer });
+    }
   };
 
   const normalize = (value: string | undefined | null) => {
@@ -105,49 +106,40 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
   };
 
   const nextQuestion = () => {
-    if (currentIndex + 1 < questions.length) {
+    if (quizData && currentIndex + 1 < quizData.questions.length) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      setShowResult(true);
+      submitQuiz();
     }
   };
 
-  // ✅ Safeguard
-  if (questions.length === 0) return <p>Loading quiz...</p>;
-  const currentQ = questions[currentIndex];
-  if (!currentQ) return <p>Loading question...</p>;
+  const submitQuiz = async () => {
+    if (!quizData) return;
+
+    const submission = {
+      answers: Object.entries(answers).map(([question_id, answer]) => ({
+        question_id: parseInt(question_id),
+        answer,
+      })),
+    };
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/quiz/quiz/${quizId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(submission),
+      });
+      const resultData = await res.json();
+      setResults(resultData.results);
+    } catch (err) {
+      console.error("Error submitting quiz:", err);
+    }
+  };
+
+  if (!quizData) return <p>Loading quiz...</p>;
 
   if (showResult) {
-    const score = questions.filter((q) => isAnswerCorrect(q, answers[q.id])).length;
-
-    const handleSubmitResults = async () => {
-      if (submitted || submitting) return;
-      try {
-        setSubmitting(true);
-        const timeSpentMins = Math.max(1, Math.round((Date.now() - quizStartTime) / 60000));
-        const payload = {
-          user_id: (user as any)?.id ?? 1,
-          answers: questions.map((q) => ({
-            question_id: q.id,
-            user_answer: answers[q.id] ?? "",
-          })),
-          time_spent_minutes: timeSpentMins,
-        };
-        const base = (import.meta as any).env?.VITE_LEARNTRACK_API || "http://127.0.0.1:8000";
-        const res = await fetch(`${base}/quizzes/${quizId}/submit`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        // Best-effort; ignore failures for UX continuity
-        await res.json().catch(() => undefined);
-        setSubmitted(true);
-      } catch (e) {
-        console.error("Failed to submit quiz results", e);
-      } finally {
-        setSubmitting(false);
-      }
-    };
+    const score = questions.filter((q) => answers[q.id] === q.correct_answer).length;
 
     return (
       <Card>
@@ -161,7 +153,7 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
               <p className="font-semibold">{q.question}</p>
               <p>
                 Your Answer: {answers[q.id] || "Not answered"}{" "}
-                {isAnswerCorrect(q, answers[q.id]) ? "✅" : "❌"}
+                {answers[q.id] === q.correct_answer ? "✅" : "❌"}
               </p>
               <p>Correct Answer: {q.correct_answer}</p>
               <p className="text-sm text-muted-foreground">
@@ -179,19 +171,21 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
       </Card>
     );
   }
+  
+  const currentQ = quizData.questions[currentIndex];
+  if (!currentQ) return <p>Loading question...</p>;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>
-          Question {currentIndex + 1} / {questions.length}
+          Question {currentIndex + 1} / {quizData.questions.length}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="mb-4">{currentQ.question}</p>
+        <p className="mb-4">{currentQ.question_text}</p>
 
-        {/* Render based on type */}
-        {currentQ.type === "mcq" && currentQ.options && (
+        {currentQ.question_type === "mcq" && currentQ.options && (
           <div className="space-y-2">
             {currentQ.options.map((opt, i) => (
               <Button
@@ -206,7 +200,7 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
           </div>
         )}
 
-        {currentQ.type === "fill_blank" && (
+        {currentQ.type === "fill-in-the-blank" && (
           <input
             type="text"
             className="border p-2 w-full"
@@ -215,7 +209,7 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
           />
         )}
 
-        {currentQ.type === "true_false" && (
+        {currentQ.type === "true-false" && (
           <div className="space-y-2">
             <Button
               variant={normalize(answers[currentQ.id]) === "true" ? "default" : "outline"}
@@ -235,7 +229,7 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
         )}
 
         <Button className="mt-4 w-full" onClick={nextQuestion}>
-          {currentIndex + 1 < questions.length ? "Next Question" : "Finish Quiz"}
+          {currentIndex + 1 < quizData.questions.length ? "Next" : "Finish"}
         </Button>
       </CardContent>
     </Card>
