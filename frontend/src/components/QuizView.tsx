@@ -1,8 +1,7 @@
 // QuizView.tsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/store/AuthContext";
 
 interface QuizViewProps {
   quizId: number;
@@ -11,8 +10,8 @@ interface QuizViewProps {
 
 interface Question {
   id: number;
-  question: string;
-  type: string;
+  question_text: string;
+  question_type: string;
   options?: string[];
 }
 
@@ -22,7 +21,6 @@ interface QuizData {
   questions: Question[];
 }
 
-// Corrected Result interface
 interface Result {
   question_id: number;
   question_text: string;
@@ -36,14 +34,14 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
-  const [showResult, setShowResult] = useState(false);
+  const [results, setResults] = useState<Result[] | null>(null);
 
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const qRes = await fetch(`http://127.0.0.1:8000/api/quiz/quiz/${quizId}/questions`);
-        const qData = await qRes.json();
-        setQuestions(qData);
+        const res = await fetch(`http://127.0.0.1:8000/api/quiz/quiz/${quizId}`);
+        const data = await res.json();
+        setQuizData(data);
       } catch (err) {
         console.error("Error fetching quiz:", err);
       }
@@ -58,51 +56,6 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
     if (quizData) {
       setAnswers({ ...answers, [quizData.questions[currentIndex].id]: answer });
     }
-  };
-
-  const normalize = (value: string | undefined | null) => {
-    if (value == null) return "";
-    return String(value).trim().toLowerCase();
-  };
-
-  const isAnswerCorrect = (q: Question, userAnswer: string | undefined) => {
-    const normalizedUser = normalize(userAnswer);
-    const normalizedCorrect = normalize(q.correct_answer);
-
-    // Handle true/false synonyms
-    if (q.type === "true_false") {
-      const tfMap: Record<string, string> = {
-        true: "true",
-        t: "true",
-        yes: "true",
-        false: "false",
-        f: "false",
-        no: "false",
-      };
-      const nu = tfMap[normalizedUser] ?? normalizedUser;
-      const nc = tfMap[normalizedCorrect] ?? normalizedCorrect;
-      return nu === nc;
-    }
-
-    // For MCQ: compare user selection to the correct answer only
-    if (q.type === "mcq" && Array.isArray(q.options)) {
-      const stripLabel = (text: string) => text.replace(/^([A-Z])\)\s*/i, "");
-      const normalizedUserText = normalize(stripLabel(userAnswer ?? ""));
-      const normalizedCorrectText = normalize(stripLabel(q.correct_answer ?? ""));
-
-      if (normalizedUserText && normalizedCorrectText && normalizedUserText === normalizedCorrectText) {
-        return true;
-      }
-
-      // Also support letter-only answers like "A", "B"
-      const letters = ["a", "b", "c", "d", "e", "f", "g"];
-      const userIndex = letters.indexOf(normalize(userAnswer ?? ""));
-      const correctIndex = letters.indexOf(normalize(q.correct_answer ?? ""));
-      return userIndex !== -1 && userIndex === correctIndex;
-    }
-
-    // Fill in the blank: simple normalized comparison
-    return normalizedUser === normalizedCorrect;
   };
 
   const nextQuestion = () => {
@@ -138,35 +91,24 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
 
   if (!quizData) return <p>Loading quiz...</p>;
 
-  if (showResult) {
-    const score = questions.filter((q) => answers[q.id] === q.correct_answer).length;
-
+  if (results) {
+    const score = results.filter((r) => r.is_correct).length;
     return (
       <Card>
         <CardHeader>
           <CardTitle>Quiz Results</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="font-bold mb-4">Score: {score} / {questions.length}</p>
-          {questions.map((q) => (
-            <div key={q.id} className="mb-4 p-3 border rounded">
-              <p className="font-semibold">{q.question}</p>
-              <p>
-                Your Answer: {answers[q.id] || "Not answered"}{" "}
-                {answers[q.id] === q.correct_answer ? "✅" : "❌"}
-              </p>
-              <p>Correct Answer: {q.correct_answer}</p>
-              <p className="text-sm text-muted-foreground">
-                Explanation: {q.explanation}
-              </p>
+          <p className="font-bold mb-4">Score: {score} / {quizData.questions.length}</p>
+          {results.map((r) => (
+            <div key={r.question_id} className="mb-4 p-3 border rounded">
+              <p className="font-semibold">{r.question_text}</p>
+              <p>Your Answer: {r.user_answer} {r.is_correct ? "✅" : "❌"}</p>
+              {!r.is_correct && <p>Correct Answer: {r.correct_answer}</p>}
+              {r.explanation && <p className="text-sm text-muted-foreground">Explanation: {r.explanation}</p>}
             </div>
           ))}
-          <div className="flex gap-2">
-            <Button disabled={submitted || submitting} onClick={handleSubmitResults}>
-              {submitted ? "Saved" : submitting ? "Saving..." : "Save Results"}
-            </Button>
-            {onBack && <Button variant="outline" onClick={onBack}>⬅ Back</Button>}
-          </div>
+          {onBack && <Button onClick={onBack}>⬅ Back</Button>}
         </CardContent>
       </Card>
     );
@@ -200,7 +142,7 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
           </div>
         )}
 
-        {currentQ.type === "fill-in-the-blank" && (
+        {currentQ.question_type === "fill_blank" && (
           <input
             type="text"
             className="border p-2 w-full"
@@ -209,19 +151,19 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
           />
         )}
 
-        {currentQ.type === "true-false" && (
+        {currentQ.question_type === "true_false" && (
           <div className="space-y-2">
             <Button
-              variant={normalize(answers[currentQ.id]) === "true" ? "default" : "outline"}
-              onClick={() => handleAnswer("true")}
+              variant={answers[currentQ.id] === "True" ? "default" : "outline"}
+              onClick={() => handleAnswer("True")}
               className="w-full"
             >
               True
             </Button>
             <Button
-              variant={normalize(answers[currentQ.id]) === "false" ? "default" : "outline"}
-              onClick={() => handleAnswer("false")}
-              className="w-full"
+              variant={answers[currentQ.id] === "False" ? "default" : "outline"}
+              onClick={() => handleAnswer("False")}
+git              className="w-full"
             >
               False
             </Button>
