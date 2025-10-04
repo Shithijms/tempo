@@ -1,4 +1,4 @@
-// PDF Knowledge Bot Frontend JavaScript
+"""// PDF Knowledge Bot Frontend JavaScript
 
 class PDFKnowledgeBot {
     constructor() {
@@ -491,8 +491,8 @@ class PDFKnowledgeBot {
                         </small>
                     </div>
                     <div class="quiz-actions">
-                        <button class="btn btn-sm btn-primary" onclick="app.viewQuiz(${quiz.id})">
-                            <i class="fas fa-eye me-1"></i>View Quiz
+                        <button class="btn btn-sm btn-primary" onclick="app.takeQuiz(${quiz.id})">
+                            <i class="fas fa-play-circle me-1"></i>Take Quiz
                         </button>
                         <button class="btn btn-sm btn-danger" onclick="app.deleteQuiz(${quiz.id})">
                             <i class="fas fa-trash me-1"></i>Delete
@@ -506,7 +506,7 @@ class PDFKnowledgeBot {
         }
     }
 
-    async viewQuiz(quizId) {
+    async takeQuiz(quizId) {
         try {
             const response = await fetch(`${this.baseUrl}/api/quiz/quiz/${quizId}`);
             const quiz = await response.json();
@@ -523,7 +523,7 @@ class PDFKnowledgeBot {
                             <div class="question-options">
                                 ${q.options.map(option => `
                                     <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="q${q.id}" disabled>
+                                        <input class="form-check-input" type="radio" name="q${q.id}" value="${option}">
                                         <label class="form-check-label">${option}</label>
                                     </div>
                                 `).join('')}
@@ -533,11 +533,11 @@ class PDFKnowledgeBot {
                         optionsHtml = `
                             <div class="question-options">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="q${q.id}" disabled>
+                                    <input class="form-check-input" type="radio" name="q${q.id}" value="True">
                                     <label class="form-check-label">True</label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="q${q.id}" disabled>
+                                    <input class="form-check-input" type="radio" name="q${q.id}" value="False">
                                     <label class="form-check-label">False</label>
                                 </div>
                             </div>
@@ -545,31 +545,90 @@ class PDFKnowledgeBot {
                     } else if (q.question_type === 'fill_blank') {
                         optionsHtml = `
                             <div class="question-options">
-                                <input type="text" class="form-control" placeholder="Your answer..." disabled>
+                                <input type="text" class="form-control" name="q${q.id}" placeholder="Your answer...">
                             </div>
                         `;
                     }
 
                     return `
-                        <div class="quiz-question">
+                        <div class="quiz-question" data-question-id="${q.id}">
                             <h6>Question ${index + 1}</h6>
                             <p>${q.question_text}</p>
                             ${optionsHtml}
-                            <div class="correct-answer">
-                                <strong>Correct Answer:</strong> ${q.correct_answer}
-                            </div>
-                            ${q.explanation ? `<div class="quiz-explanation">${q.explanation}</div>` : ''}
                         </div>
                     `;
                 }).join('');
 
                 document.getElementById('quizModalBody').innerHTML = questionsHtml;
+                document.getElementById('submitQuizBtn').onclick = () => this.submitQuiz(quizId);
                 modal.show();
             } else {
                 this.showAlert('Error loading quiz', 'danger');
             }
         } catch (error) {
-            console.error('Error viewing quiz:', error);
+            console.error('Error taking quiz:', error);
+            this.showAlert('Network error', 'danger');
+        }
+    }
+
+    async submitQuiz(quizId) {
+        const modalBody = document.getElementById('quizModalBody');
+        const questions = modalBody.querySelectorAll('.quiz-question');
+        const userAnswers = [];
+
+        questions.forEach(q => {
+            const questionId = q.dataset.questionId;
+            let answer = '';
+            
+            const radio = q.querySelector('input[type="radio"]:checked');
+            if (radio) {
+                answer = radio.value;
+            } else {
+                const text = q.querySelector('input[type="text"]');
+                if (text) {
+                    answer = text.value;
+                }
+            }
+            userAnswers.push({ question_id: parseInt(questionId), answer: answer });
+        });
+
+        try {
+            const response = await fetch(`${this.baseUrl}/api/quiz/quiz/${quizId}/submit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ answers: userAnswers })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                let resultsHtml = `
+                    <div class="text-center mb-3">
+                        <h4>Quiz Results</h4>
+                        <p class="fs-5">You scored <strong>${result.score}%</strong> (${result.correct_answers} out of ${result.total_questions})</p>
+                    </div>
+                `;
+                
+                result.results.forEach((res, index) => {
+                    resultsHtml += `
+                        <div class="quiz-question result-${res.is_correct ? 'correct' : 'incorrect'}">
+                            <h6>Question ${index + 1}: ${res.question_text}</h6>
+                            <p>Your answer: ${res.user_answer}</p>
+                            <p>Correct answer: ${res.correct_answer}</p>
+                            ${res.explanation ? `<div class="quiz-explanation">${res.explanation}</div>` : ''}
+                        </div>
+                    `;
+                });
+
+                modalBody.innerHTML = resultsHtml;
+                document.getElementById('submitQuizBtn').style.display = 'none';
+            } else {
+                this.showAlert('Error submitting quiz', 'danger');
+            }
+        } catch (error) {
+            console.error('Error submitting quiz:', error);
             this.showAlert('Network error', 'danger');
         }
     }
@@ -601,3 +660,4 @@ class PDFKnowledgeBot {
 
 // Initialize the application
 const app = new PDFKnowledgeBot();
+""

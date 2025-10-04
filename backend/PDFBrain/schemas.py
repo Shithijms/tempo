@@ -91,6 +91,29 @@ class QuizGenerationResponse(BaseModel):
     message: str
     quiz: Optional[QuizResponse] = None
 
+# Quiz submission schemas
+class UserAnswer(BaseModel):
+    question_id: int
+    answer: str
+
+class QuizSubmissionRequest(BaseModel):
+    answers: List[UserAnswer]
+
+class QuestionResult(BaseModel):
+    question_id: int
+    question_text: str
+    user_answer: str
+    correct_answer: str
+    is_correct: bool
+    explanation: Optional[str] = None
+
+class QuizSubmissionResponse(BaseModel):
+    quiz_id: int
+    score: float
+    correct_answers: int
+    total_questions: int
+    results: List[QuestionResult]
+
 # General response schemas
 class ErrorResponse(BaseModel):
     success: bool = False

@@ -5,7 +5,13 @@ from typing import List
 
 from database import get_db
 from models import PDFDocument, Quiz
-from schemas import QuizGenerationRequest, QuizGenerationResponse, QuizResponse
+from schemas import (
+    QuizGenerationRequest, 
+    QuizGenerationResponse, 
+    QuizResponse, 
+    QuizSubmissionRequest,
+    QuizSubmissionResponse
+)
 from services.quiz_generator import quiz_generator
 
 logger = logging.getLogger(__name__)
@@ -19,20 +25,15 @@ async def generate_quiz(
 ):
     """Generate a quiz from PDF content"""
     try:
-        # Validate request
         errors = quiz_generator.validate_quiz_request(request)
         if errors:
             raise HTTPException(status_code=422, detail=f"Validation errors: {', '.join(errors)}")
         
-        # Verify document exists
         document = db.query(PDFDocument).filter(PDFDocument.id == request.document_id).first()
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
         
-        # Generate quiz
         quiz = await quiz_generator.generate_quiz(request, db)
-        
-        logger.info(f"Generated quiz {quiz.id} for document {request.document_id}")
         
         return QuizGenerationResponse(
             success=True,
@@ -40,8 +41,6 @@ async def generate_quiz(
             quiz=QuizResponse.from_orm(quiz)
         )
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error generating quiz: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate quiz: {str(e)}")
@@ -51,16 +50,25 @@ async def get_quiz(
     quiz_id: int,
     db: Session = Depends(get_db)
 ):
-    """Get a specific quiz with all questions"""
+    """Get a specific quiz with all questions and answers"""
     try:
         quiz = quiz_generator.get_quiz_by_id(quiz_id, db)
         return QuizResponse.from_orm(quiz)
-        
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error retrieving quiz: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve quiz: {str(e)}")
+
+@router.post("/quiz/{quiz_id}/submit", response_model=QuizSubmissionResponse)
+async def submit_quiz(
+    quiz_id: int,
+    submission: QuizSubmissionRequest,
+    db: Session = Depends(get_db)
+):
+    """Submit quiz answers and get results"""
+    try:
+        results = quiz_generator.check_answers(quiz_id, submission, db)
+        return QuizSubmissionResponse(**results)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.get("/document/{document_id}/quizzes", response_model=List[QuizResponse])
 async def get_document_quizzes(
@@ -68,41 +76,24 @@ async def get_document_quizzes(
     db: Session = Depends(get_db)
 ):
     """Get all quizzes for a specific document"""
-    
-    # Verify document exists
     document = db.query(PDFDocument).filter(PDFDocument.id == document_id).first()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    try:
-        quizzes = quiz_generator.get_quizzes_by_document(document_id, db)
-        return [QuizResponse.from_orm(quiz) for quiz in quizzes]
-        
-    except Exception as e:
-        logger.error(f"Error retrieving quizzes for document {document_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve quizzes: {str(e)}")
+    quizzes = quiz_generator.get_quizzes_by_document(document_id, db)
+    return [QuizResponse.from_orm(quiz) for quiz in quizzes]
 
 @router.delete("/quiz/{quiz_id}")
 async def delete_quiz(
     quiz_id: int,
     db: Session = Depends(get_db)
 ):
-    """Delete a quiz and all its questions"""
+    """Delete a quiz"""
     try:
-        success = quiz_generator.delete_quiz(quiz_id, db)
-        if not success:
-            raise HTTPException(status_code=404, detail="Quiz not found")
-        
-        return {
-            "success": True,
-            "message": f"Quiz {quiz_id} deleted successfully"
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting quiz {quiz_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete quiz: {str(e)}")
+        quiz_generator.delete_quiz(quiz_id, db)
+        return {"success": True, "message": f"Quiz {quiz_id} deleted"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.get("/")
 async def list_all_quizzes(
@@ -110,10 +101,8 @@ async def list_all_quizzes(
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    """Get all quizzes with basic information"""
-    
+    """List all quizzes"""
     quizzes = db.query(Quiz).offset(skip).limit(limit).all()
-    
     return {
         "quizzes": [
             {
@@ -126,37 +115,4 @@ async def list_all_quizzes(
             }
             for quiz in quizzes
         ],
-        "total_count": db.query(Quiz).count()
     }
-
-@router.get("/quiz/{quiz_id}/questions")
-async def get_quiz_questions_only(
-    quiz_id: int,
-    db: Session = Depends(get_db)
-):
-    """Get only the questions for a quiz (useful for taking the quiz)"""
-    try:
-        quiz = quiz_generator.get_quiz_by_id(quiz_id, db)
-        
-        questions = [
-            {
-                "id": q.id,
-                "question_type": q.question_type,
-                "question_text": q.question_text,
-                "options": q.options if q.question_type == "mcq" else None,
-                "order_index": q.order_index
-            }
-            for q in sorted(quiz.questions, key=lambda x: x.order_index)
-        ]
-        
-        return {
-            "quiz_id": quiz.id,
-            "title": quiz.title,
-            "questions": questions
-        }
-        
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error retrieving quiz questions: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve quiz questions: {str(e)}")
