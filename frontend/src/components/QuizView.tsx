@@ -163,7 +163,7 @@ export const QuizView = ({ quizId, onBack }: QuizViewProps) => {
             <Button
               variant={answers[currentQ.id] === "False" ? "default" : "outline"}
               onClick={() => handleAnswer("False")}
-git              className="w-full"
+             className="w-full"
             >
               False
             </Button>
